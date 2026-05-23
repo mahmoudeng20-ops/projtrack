@@ -1,20 +1,19 @@
 platform :ios, '15.0'
 
-import File.join(File.dirname(File.expand_path(__FILE__)), '..', '.flutter-plugins-dependencies')
+require File.expand_path(File.join(File.dirname(__FILE__), '..', '.flutter-plugins-dependencies'))
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  # هذه هي الطريقة القياسية والآمنة لاستدعاء حزم فلاتر للـ iOS
-  flutter_ios_podfile_setup = File.join(File.dirname(File.expand_path(__FILE__)), '..', '.flutter-plugins-dependencies')
+  # إعدادات الحزم القياسية لفلاتر
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     
-    # تأكيد إضافي للسيرفر لتعديل إصدار الـ iOS لكافة المكتبات الفرعية تلقائياً
+    # فرض تحديث إصدار iOS لكافة المكتبات والفايربيز إلى 15.0
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end
