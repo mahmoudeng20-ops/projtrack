@@ -7,8 +7,8 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
   
-  # هذا السطر يقوم بقراءة واستدعاء حزم الـ Plugins تلقائياً من Flutter
-  flutter_install_all_ios_pods File.dirname(File.realpath(__file__))
+  # تم تعديل الكلمة هنا لتصبح بأحرف كبيرة __FILE__ لتتعرف عليها لغة Ruby بشكل سليم
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 end
 
 post_install do |installer|
@@ -19,7 +19,7 @@ post_install do |installer|
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
         config.build_settings['ENABLE_BITCODE'] = 'NO'
         
-        # 2. السطر السحري: توجيه مسارات الـ Pods لمنع Xcode من إيقاف البناء بسبب عدم تطابق الـ Sandbox مع الـ Lockfile
+        # 2. توجيه مسارات الـ Pods لمنع Xcode من إيقاف البناء بسبب عدم تطابق الـ Sandbox مع الـ Lockfile
         config.build_settings['PODS_PODFILE_DIR_PATH'] = '$(SRCROOT)'
         config.build_settings['PODS_ROOT'] = '$(SRCROOT)/Pods'
       end
