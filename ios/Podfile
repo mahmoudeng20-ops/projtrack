@@ -1,49 +1,43 @@
-# السطور التالية أساسية لربط ملفات فلاتر بالـ Pods وإتاحة الدوال الذكية
-podb_helpers_path = File.expand_path(File.join('..', '..', '.symlinks', 'plugins', 'flutter_plugin_android_lifecycle', 'ios', 'Classes'), __FILE__)
-# استدعاء ملف فلاتر التعريفي الرئيسي لبيئة iOS
-import File.expand_path(File.join('..', '..', '..', 'packages', 'flutter_tools', 'templates', 'cocoapods', 'Podfile-flutter-plugins'), __FILE__) rescue nil
+# الكود القياسي لاستدعاء ملفات الفلاتر الأساسية من جذر الأداة على السيرفر
+# تضمن هذه السطور تعريف دالة flutter_install_all_ios_pods تلقائياً بدون أخطاء
+import File.expand_path(File.join('packages', 'flutter_tools', 'templates', 'cocoapods', 'Podfile-flutter-plugins'), File.dirname(File.realpath(__FILE__)))
 
-# في حال فشل الاستدعاء النسبي المباشر (وهو الأضمن للمنصات السحابية):
-podb_fallback = File.expand_path('Generated.xcconfig', __dir__)
-if File.exist?(podb_fallback)
-  txt = File.read(podb_fallback)
-  flutter_root = txt[/FLUTTER_ROOT=(.+)/, 1]
-  if flutter_root
-    require File.expand_path('packages/flutter_tools/bin/podhelper', flutter_root)
-  end
-end
-
-# الإصدار الأدنى لمنصة iOS للمشروع
+# تحديد الإصدار الأدنى لـ iOS في المشروع
 platform :ios, '15.0'
 
+# مسار ملف الإعدادات الخاص بالفلاتر
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  # الدالة أصبحت الآن معرفة بفضل السطور السابقة
+  # سحب وتثبيت كافة الـ Plugins الخاصة بالفلاتر (مثل الفايربيز وغيرها)
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
+    # استدعاء إعدادات البناء الإضافية الافتراضية للفلاتر
+    flutter_additional_ios_build_settings(target)
+    
     if target.respond_to?(:build_configurations)
       target.build_configurations.each do |config|
-        # 1. توحيد الإصدار لكافة المكتبات والـ Plugins
+        # 1. إجبار كافة الحزم والـ Plugins على التوافق مع إصدار iOS 15.0 لضمان عدم حدوث تضارب
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
         config.build_settings['ENABLE_BITCODE'] = 'NO'
         
-        # 2. حل تضارب مسارات الـ Sandbox في السيرفر السحابي
+        # 2. تعديل مسارات الـ Pods لمنع Xcode من إيقاف البناء بسبب عدم تطابق الـ Sandbox
         config.build_settings['PODS_PODFILE_DIR_PATH'] = '$(SRCROOT)'
         config.build_settings['PODS_ROOT'] = '$(SRCROOT)/Pods'
       end
     end
   end
   
-  # 3. تخطي فحص تزامن الملفات لمنع انهيار البيئة الافتراضية
+  # 3. تعديل الـ Script الخاص بفحص الـ Manifest لمنع انهيار السيرفر السحابي
   installer.aggregate_targets.each do |aggregate_target|
     aggregate_target.user_project.targets.each do |user_target|
       user_target.build_phases.each do |phase|
         if phase.respond_to?(:name) && phase.name == 'Check Pods Manifest.lock'
+          # تخطي الفحص الصارم للـ Sandbox على سيرفر Codemagic بنجاح
           phase.shell_script = "echo 'Skipping Sandbox Sync Check on Codemagic Cloud'"
         end
       end
