@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "698179864721",
+    "project_id": "projtrack-system",
+    "storage_bucket": "projtrack-system.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:698179864721:android:93548ef89519135c2e9730",
+        "android_client_info": {
+          "package_name": "com.example.projtrack_new"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8Ejb_B5b7vkx39OmcyZ666bjg_y_angU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:698179864721:android:66439b054d2851772e9730",
+        "android_client_info": {
+          "package_name": "com.mah.projtrack"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8Ejb_B5b7vkx39OmcyZ666bjg_y_angU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
