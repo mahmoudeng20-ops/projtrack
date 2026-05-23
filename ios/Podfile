@@ -1,16 +1,26 @@
+# الإصدار الأدنى لمنصة iOS للمشروع بالكامل
 platform :ios, '15.0'
 
+# إعدادات فلاتر الافتراضية للبناء
+# (تأكد من عدم وجود أي سطر يحتوي على كلمة import لتجنب أخطاء السيرفر)
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 end
 
+# ورشة العمل التي يتم تنفيذها بعد تثبيت الحزم (Post-install) لتهيئة إعدادات الـ Xcode
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    # إعدادات البناء التلقائية من فلاتر
+    
+    # 1. تحديث إعدادات البناء الفرعية لفلاتر تلقائياً
     if target.respond_to?(:build_configurations)
       target.build_configurations.each do |config|
+        
+        # 2. إجبار كافة الحزم والمكتبات (مثل Firebase) على العمل بإصدار 15.0 بدلاً من 13.0
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+        
+        # 3. إعداد إضافي لضمان توافق الـ Swift Package Manager مع البناء السحابي
+        config.build_settings['ENABLE_BITCODE'] = 'NO'
       end
     end
   end
