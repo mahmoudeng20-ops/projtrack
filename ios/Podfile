@@ -1,3 +1,4 @@
+# Force fresh cloud build compilation after cache clear
 # الإصدار الأدنى لمنصة iOS للمشروع
 platform :ios, '15.0'
 
