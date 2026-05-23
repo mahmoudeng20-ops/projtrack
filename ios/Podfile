@@ -1,43 +1,42 @@
-# الكود القياسي لاستدعاء ملفات الفلاتر الأساسية من جذر الأداة على السيرفر
-# تضمن هذه السطور تعريف دالة flutter_install_all_ios_pods تلقائياً بدون أخطاء
-import File.expand_path(File.join('packages', 'flutter_tools', 'templates', 'cocoapods', 'Podfile-flutter-plugins'), File.dirname(File.realpath(__FILE__)))
+# السطر الرسمي والوحيد المعتمد من Flutter لاستدعاء وإعداد دالة الـ Plugins
+ffpath = File.expand_path(File.join('packages', 'flutter_tools', 'templates', 'cocoapods', 'Podfile-flutter-plugins'), File.dirname(File.realpath(__FILE__)))
+# استخدام load بدلاً من import لقراءة الملف برمجياً في لغة Ruby
+load ffpath if File.exist?(ffpath)
 
 # تحديد الإصدار الأدنى لـ iOS في المشروع
 platform :ios, '15.0'
 
-# مسار ملف الإعدادات الخاص بالفلاتر
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  # سحب وتثبيت كافة الـ Plugins الخاصة بالفلاتر (مثل الفايربيز وغيرها)
+  # تثبيت كافة الـ Plugins الخاصة بـ Flutter تلقائياً (مثل الفايربيز)
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    # استدعاء إعدادات البناء الإضافية الافتراضية للفلاتر
+    # استدعاء الإعدادات الافتراضية الرسمية لمحرك Flutter
     flutter_additional_ios_build_settings(target)
     
     if target.respond_to?(:build_configurations)
       target.build_configurations.each do |config|
-        # 1. إجبار كافة الحزم والـ Plugins على التوافق مع إصدار iOS 15.0 لضمان عدم حدوث تضارب
+        # 1. توحيد إصدار البناء لكافة المكتبات والـ Plugins على iOS 15
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
         config.build_settings['ENABLE_BITCODE'] = 'NO'
         
-        # 2. تعديل مسارات الـ Pods لمنع Xcode من إيقاف البناء بسبب عدم تطابق الـ Sandbox
+        # 2. تعديل مسارات الـ Pods لمنع تضارب الـ Sandbox على السيرفر السحابي
         config.build_settings['PODS_PODFILE_DIR_PATH'] = '$(SRCROOT)'
         config.build_settings['PODS_ROOT'] = '$(SRCROOT)/Pods'
       end
     end
   end
   
-  # 3. تعديل الـ Script الخاص بفحص الـ Manifest لمنع انهيار السيرفر السحابي
+  # 3. تخطي الفحص الصارم للـ Sandbox لمنع انهيار البناء على Codemagic
   installer.aggregate_targets.each do |aggregate_target|
     aggregate_target.user_project.targets.each do |user_target|
       user_target.build_phases.each do |phase|
         if phase.respond_to?(:name) && phase.name == 'Check Pods Manifest.lock'
-          # تخطي الفحص الصارم للـ Sandbox على سيرفر Codemagic بنجاح
           phase.shell_script = "echo 'Skipping Sandbox Sync Check on Codemagic Cloud'"
         end
       end
