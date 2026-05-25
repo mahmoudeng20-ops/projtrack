@@ -10,11 +10,17 @@ import 'progress_page.dart';
 late MyAppState appState;
 
 void main() async {
+  // تأمين تهيئة ميزات النظام والـ Plugins
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    // منع التطبيق من الانهيار الكامل إذا كانت إعدادات منصة iOS بالفايربيس غائبة
+    debugPrint("Firebase Initialization Error: $e");
+  }
 
   runApp(const MyApp());
 }
@@ -41,14 +47,18 @@ class MyAppState extends State<MyApp> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isDark = prefs.getBool('is_dark_mode') ?? false;
-    final langCode = prefs.getString('app_language') ?? 'ar';
-    
-    setState(() {
-      _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-      _locale = Locale(langCode);
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isDark = prefs.getBool('is_dark_mode') ?? false;
+      final langCode = prefs.getString('app_language') ?? 'ar';
+      
+      setState(() {
+        _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+        _locale = Locale(langCode);
+      });
+    } catch (e) {
+      debugPrint("Error loading shared preferences: $e");
+    }
   }
 
   Future<void> changeTheme(bool isDark) async {
@@ -133,47 +143,55 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _checkAutoLoginAndLoadCredentials();
+    // 🔥 تعديل أمني: تأجيل الفحص بضع أجزاء من الثانية لحين استقرار بناء الشاشة رسومياً
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoLoginAndLoadCredentials();
+    });
   }
 
   Future<void> _checkAutoLoginAndLoadCredentials() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final prefs = await SharedPreferences.getInstance();
     
-    final savedUsername = prefs.getString('saved_user_name');
-    final savedEmail = prefs.getString('saved_user_email');
-    final savedPassword = prefs.getString('saved_user_password');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      final savedUsername = prefs.getString('saved_user_name');
+      final savedEmail = prefs.getString('saved_user_email');
+      final savedPassword = prefs.getString('saved_user_password');
 
-    if (mounted) {
-      setState(() {
-        if (savedUsername != null) _usernameController.text = savedUsername;
-        if (savedEmail != null) _emailController.text = savedEmail;
-        if (savedPassword != null) _passwordController.text = savedPassword;
-      });
-    }
-
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      try {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('app_users')
-            .doc(currentUser.uid)
-            .get();
-
-        if (userDoc.exists && userDoc.get('status') == 'approved') {
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/progress');
-            return;
-          }
-        } else {
-          await FirebaseAuth.instance.signOut();
-        }
-      } catch (e) {
-        // خطأ صامت في الخلفية أثناء الدخول التلقائي
+      if (mounted) {
+        setState(() {
+          if (savedUsername != null) _usernameController.text = savedUsername;
+          if (savedEmail != null) _emailController.text = savedEmail;
+          if (savedPassword != null) _passwordController.text = savedPassword;
+        });
       }
+
+      // التحقق من حالة الفايربيس بأمان لمنع انهيار الـ Null
+      if (FirebaseAuth.instance.currentUser != null) {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          DocumentSnapshot userDoc = await FirebaseFirestore.instance
+              .collection('app_users')
+              .doc(currentUser.uid)
+              .get();
+
+          if (userDoc.exists && userDoc.get('status') == 'approved') {
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/progress');
+              return;
+            }
+          } else {
+            await FirebaseAuth.instance.signOut();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Auto-login context safety catch: $e");
     }
     
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _saveCredentials(String username, String email, String password) async {
@@ -211,8 +229,8 @@ class _HomePageState extends State<HomePage> {
       _showSnackBar(message, Colors.red);
     } catch (e) {
       _showSnackBar("❌ Error: $e", Colors.red);
-    } finally { 
-      setState(() => _isLoading = false);
+    } finaly { 
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -261,8 +279,8 @@ class _HomePageState extends State<HomePage> {
       _showSnackBar(message, Colors.red);
     } catch (e) {
       _showSnackBar("❌ Error: $e", Colors.red);
-    } finally { 
-      setState(() => _isLoading = false);
+    } finaly { 
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -272,16 +290,14 @@ class _HomePageState extends State<HomePage> {
 
     setState(() => _isLoading = true);
     try {
-      // إرسال البيانات مع التأكد التام من عمل .trim() لإزالة أي مسافات زائدة ومخفية
       UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(), // تم إضافة الـ trim هنا لحمايتها من الفراغات المفاجئة
+        password: _passwordController.text.trim(),
       );
 
       String? uid = userCredential.user?.uid;
 
       if (uid != null) {
-        // محاولة جلب وثيقة المستخدم من Firestore لفحص حالة الحساب (approved)
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('app_users')
             .doc(uid)
@@ -302,7 +318,6 @@ class _HomePageState extends State<HomePage> {
             
             if (mounted) Navigator.pushReplacementNamed(context, '/progress');
           } else {
-            // الحساب موجود ولكن حالته pending (لم يتم تفعيله بعد من لوحة التحكم أو قواعد Firestore)
             _showSnackBar(isArabic ? "⏳ عذراً، حسابك لا يزال قيد المراجعة والموافقة من الإدارة." : "⏳ Sorry, your account is still pending admin approval.", Colors.amber.shade800);
             
             await _saveCredentials(
@@ -314,28 +329,25 @@ class _HomePageState extends State<HomePage> {
             await FirebaseAuth.instance.signOut(); 
           }
         } else {
-          // الحساب مسجل بـ Auth ولكن لا توجد له وثيقة بداخل كولكشن app_users
-          _showSnackBar(isArabic ? "❌ الحساب مسجل بالـ Auth ولكن لم يتم العثور على بيانات الصلاحيات الخاصة بك في Firestore." : "❌ User authorization document not found in Firestore.", Colors.red);
+          _showSnackBar(isArabic ? "❌ الحساب مسجل ولكن لم يتم العثور على بيانات الصلاحيات في Firestore." : "❌ User authorization document not found in Firestore.", Colors.red);
           await FirebaseAuth.instance.signOut();
         }
       }
 
     } on FirebaseAuthException catch (e) {
-      // 🔥 تعديل جوهري: إظهار كود الخطأ الحقيقي القادم من الخادم بدل النص الثابت
       String message = isArabic ? "❌ خطأ: " : "❌ Error: ";
       if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
         message += isArabic ? "البريد الإلكتروني أو كلمة المرور غير صحيحة." : "Incorrect email or password.";
       } else if (e.code == 'network-request-failed') {
         message += isArabic ? "فشل الاتصال بالإنترنت. تحقق من الشبكة." : "Network error. Please check internet connection.";
       } else {
-        message += "${e.message} (${e.code})"; // يطبع تفصيل الخطأ بوضوح
+        message += "${e.message} (${e.code})";
       }
       _showSnackBar(message, Colors.red);
     } catch (e) {
-      // يمسك أي أخطاء أخرى مثل مشاكل الـ Rules الخاصة بـ Firestore لمنع جلب البيانات
       _showSnackBar(isArabic ? "❌ خطأ غير متوقع: $e" : "❌ Unexpected Error: $e", Colors.red);
-    } finally { 
-      setState(() => _isLoading = false);
+    } finaly { 
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -344,7 +356,7 @@ class _HomePageState extends State<HomePage> {
       SnackBar(
         content: Text(message, style: const TextStyle(fontSize: 14)), 
         backgroundColor: color,
-        duration: const Duration(seconds: 5), // زيادة الوقت قليلاً لقراءة الخطأ التفصيلي
+        duration: const Duration(seconds: 5),
       ),
     );
   }
