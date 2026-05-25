@@ -229,7 +229,7 @@ class _HomePageState extends State<HomePage> {
       _showSnackBar(message, Colors.red);
     } catch (e) {
       _showSnackBar("❌ Error: $e", Colors.red);
-    } finaly { 
+    } finally { 
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -279,7 +279,7 @@ class _HomePageState extends State<HomePage> {
       _showSnackBar(message, Colors.red);
     } catch (e) {
       _showSnackBar("❌ Error: $e", Colors.red);
-    } finaly { 
+    } finally { 
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -346,7 +346,7 @@ class _HomePageState extends State<HomePage> {
       _showSnackBar(message, Colors.red);
     } catch (e) {
       _showSnackBar(isArabic ? "❌ خطأ غير متوقع: $e" : "❌ Unexpected Error: $e", Colors.red);
-    } finaly { 
+    } finally { 
       if (mounted) setState(() => _isLoading = false);
     }
   }
