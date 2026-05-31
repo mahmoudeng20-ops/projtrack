@@ -26,10 +26,11 @@ android {
     // 2. إعداد بصمة التوقيع الرقمي للنسخة النهائية (Release)
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String? ?: ""
-            keyPassword = keystoreProperties["keyPassword"] as String? ?: ""
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String? ?: ""
+            // التصحيح: استخدام getProperty يضمن عدم حدوث Crash أثناء تحويل أنواع البيانات
+            keyAlias = keystoreProperties.getProperty("keyAlias") ?: ""
+            keyPassword = keystoreProperties.getProperty("keyPassword") ?: ""
+            storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+            storePassword = keystoreProperties.getProperty("storePassword") ?: ""
         }
     }
 
@@ -55,7 +56,7 @@ android {
             // 3. ربط بصمة التوقيع الرقمي الرسمية بدلاً من بصمة الـ debug المؤقتة
             signingConfig = signingConfigs.getByName("release")
             
-            // 4. تفعيل تشفير الكود والـ R8 لمنع الهندسة العكسية وحقن الفيروسات
+            // 4. تفعيل تشفير الكود وضغطه لمنع الهندسة العكسية وحماية التطبيق
             isMinifyEnabled = true
             isShrinkResources = true
             
