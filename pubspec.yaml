@@ -11,20 +11,20 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # حزم اللغات والـ Localizations
+  # حزم اللغات والـ Localizations (تم التعديل للإصدار المتوافق تماماً مع الـ SDK لديك)
   flutter_localizations:
     sdk: flutter
-  intl: 0.20.2  # تم الإبقاء على إصدار واحد مستقر متوافق مع البيئة لديك
+  intl: 0.20.2
 
   # حزم النظام والخدمات
   url_launcher: ^6.3.0
   shared_preferences: ^2.2.2
   cupertino_icons: ^1.0.8
 
-  # حزم الفايربيز الأساسية للمشروع
-  firebase_core: ^4.9.0
-  firebase_auth: ^6.5.1
-  cloud_firestore: ^6.4.1
+  # حزم الفايربيز المستقرة (تم تثبيت الإصدارات لمنع تعارض الأكواد في iOS)
+  firebase_core: 3.1.1
+  firebase_auth: 5.1.1
+  cloud_firestore: 5.0.2
 
 dev_dependencies:
   flutter_test:
