@@ -22,9 +22,9 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # حزم الفايربيز الأساسية للمشروع
-  firebase_core: ^4.5.0
-  firebase_auth: ^6.2.0
-  cloud_firestore: ^6.1.3
+  firebase_core: ^4.9.0
+  firebase_auth: ^6.5.1
+  cloud_firestore: ^6.4.1
 
 dev_dependencies:
   flutter_test:
