@@ -1,7 +1,5 @@
-# تعيين النظام المستهدف الافتراضي لتجنب أخطاء حزم الفايربيز القديمة
 platform :ios, '13.0'
 
-# جلب ملفات الربط التلقائي الرسمية لـ Flutter السحابي
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
   unless File.exist?(generated_xcode_build_settings_path)
@@ -18,10 +16,10 @@ end
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'), flutter_root)
 
 target 'Runner' do
-  use_frameworks!
+  # السطر السحري لحل مشكلة Module not found عبر ربط المكتبات بشكل استاتيكي
+  use_frameworks! :linkage => :static
   use_modular_headers!
 
-  # دالة فلاتر الرسمية لربط الحزم تلقائياً (بما فيها الفايربيز) دون تدخل يدوي
   flutter_ios_podfile_setup
 end
 
@@ -29,7 +27,6 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
-      # التأكيد على السيرفر لبناء كل الحزم الفرعية على نظام iOS 13.0
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
     end
   end
