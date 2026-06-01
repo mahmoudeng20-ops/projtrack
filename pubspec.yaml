@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # حزم اللغات والـ Localizations (تم التعديل للإصدار المتوافق تماماً مع الـ SDK لديك)
+  # حزم اللغات والـ Localizations
   flutter_localizations:
     sdk: flutter
   intl: 0.20.2
@@ -21,10 +21,10 @@ dependencies:
   shared_preferences: ^2.2.2
   cupertino_icons: ^1.0.8
 
-  # حزم الفايربيز المستقرة (تم تثبيت الإصدارات لمنع تعارض الأكواد في iOS)
-  firebase_core: 3.1.1
-  firebase_auth: 5.1.1
-  cloud_firestore: 5.0.2
+  # حزم الفايربيز الحديثة المتوافقة تماماً مع الـ Swift Package Manager (SPM)
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
 
 dev_dependencies:
   flutter_test:
@@ -36,12 +36,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-  # تفعيل مجلد الـ assets العام للصور داخل التطبيق
   assets:
     - assets/
 
-# إعدادات أيقونة التطبيق الرسمية للشاشة الخارجية
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true

@@ -16,8 +16,7 @@ end
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'), flutter_root)
 
 target 'Runner' do
-  # إجبار ربط المكتبات بشكل استاتيكي كامل لمنع تشتت Xcode وحل مشكلة Module Not Found
-  use_frameworks! :linkage => :static
+  use_frameworks!
   use_modular_headers!
 
   flutter_ios_podfile_setup
@@ -27,11 +26,7 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
-      # التأكيد على السيرفر لبناء كل الحزم الفرعية على نظام iOS 13.0
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-      
-      # سطر إضافي لمنع تداخل SPM مع الحزم الكلاسيكية
-      config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'NO'
     end
   end
 end
