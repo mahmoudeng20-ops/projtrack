@@ -1,13 +1,28 @@
-# Set target platform to iOS 13.0 to support Firebase
 platform :ios, '13.0'
 
-import_makefile platform_config if File.exist?(platform_config = File.expand_path('.flutter-plugins-dependencies', __dir__))
+# تعيين مسارات فلاتر الافتراضية للسيرفر بشكل مباشر
+flutter_root = File.expand_path('..', File.dirname(File.dirname(__FILE__)))
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "Generated.xcconfig not found. Please run `flutter pub get` or building locally first."
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in Generated.xcconfig."
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  flutter_install_all_ios_pods File.dirname(File.dirname(File.expand_path(__FILE__)))
+  flutter_ios_podfile_setup
 end
 
 post_install do |installer|
