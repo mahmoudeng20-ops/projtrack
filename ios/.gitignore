@@ -1,3 +1,4 @@
+# General Ignore Rules
 **/dgph
 *.mode1v3
 *.mode2v3
@@ -10,27 +11,34 @@
 **/.vagrant/
 **/DerivedData/
 Icon?
-**/Pods/
-**/.symlinks/
-profile
-xcuserdata
+
+# --- iOS Specific Fixes (The Root Cause Fix) ---
+# حظر ملف القفل لمنع تعارض الساندبوكس في Codemagic
+ios/Podfile.lock
+ios/Pods/
+ios/.symlinks/
+
+# حظر ملفات المستخدم والكاش الخاصة بـ Xcode في كل مكان
+**/xcuserdata/
+**/DerivedData/
+
+# تصحيح مسارات ملفات الإعدادات المحلية (حل خطأ 74 وتعارض التوقيع)
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/ephemeral/
+
+# General Flutter Ignore Rules
 **/.generated/
-Flutter/App.framework
-Flutter/Flutter.framework
-Flutter/Flutter.podspec
-
-# إعادة حظر ملفات الإعدادات المحلية لمنع تعارض بيئة الويندوز مع سيرفر الماك (حل خطأ 74)
-Flutter/Generated.xcconfig
-Flutter/flutter_export_environment.sh
-
-Flutter/ephemeral/
 Flutter/app.flx
 Flutter/app.zip
 Flutter/flutter_assets/
 ServiceDefinitions.json
 Runner/GeneratedPluginRegistrant.*
 
-# Exceptions to above rules.
+# Exceptions to above rules
 !default.mode1v3
 !default.mode2v3
 !default.pbxuser
