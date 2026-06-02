@@ -1,5 +1,16 @@
 platform :ios, '13.0'
 
+# 1. كود سحري مضاف لتنظيف الساندبوكس العالق في السيرفر تلقائياً قبل البناء
+# ------------------------------------------------------------------------
+if ENV['CI'] # هذا الشرط يعني إذا كان الكود يعمل داخل سيرفر مثل Codemagic
+  puts "🚀 CI Environment detected! Cleaning legacy sandbox and mismatched cache..."
+  system("rm -f Podfile.lock")
+  system("rm -rf Pods")
+  system("rm -rf .symlinks")
+  system("rm -rf Flutter/ephemeral")
+end
+# ------------------------------------------------------------------------
+
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
   unless File.exist?(generated_xcode_build_settings_path)
