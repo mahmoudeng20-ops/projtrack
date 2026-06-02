@@ -18,12 +18,15 @@ xcuserdata
 Flutter/App.framework
 Flutter/Flutter.framework
 Flutter/Flutter.podspec
-Flutter/Generated.xcconfig
+
+# تم السماح برفع هذين الملفين لإصلاح خطأ Xcode رقم 74 وتوفير إعدادات التوقيع للسيرفر
+# Flutter/Generated.xcconfig
+# Flutter/flutter_export_environment.sh
+
 Flutter/ephemeral/
 Flutter/app.flx
 Flutter/app.zip
 Flutter/flutter_assets/
-Flutter/flutter_export_environment.sh
 ServiceDefinitions.json
 Runner/GeneratedPluginRegistrant.*
 
