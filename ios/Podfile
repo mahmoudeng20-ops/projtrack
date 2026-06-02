@@ -1,5 +1,18 @@
 platform :ios, '13.0'
 
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "Generated.xcconfig not found. Please run `flutter pub get`."
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in Generated.xcconfig."
+end
+
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'), flutter_root)
 
 target 'Runner' do
@@ -7,4 +20,13 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_ios_podfile_setup
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    end
+  end
 end
