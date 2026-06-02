@@ -1,19 +1,24 @@
 platform :ios, '13.0'
 
-# 1. كود سحري مضاف لتنظيف الساندبوكس العالق في السيرفر تلقائياً قبل البناء
+# كود حقن وتنظيف السيرفر وإعادة توليد الإعدادات للماك سحابياً
 # ------------------------------------------------------------------------
-if ENV['CI'] # هذا الشرط يعني إذا كان الكود يعمل داخل سيرفر مثل Codemagic
-  puts "🚀 CI Environment detected! Cleaning legacy sandbox and mismatched cache..."
+if ENV['CI']
+  puts "🚀 CI Environment detected! Regenerating native Mac configurations..."
   system("rm -f Podfile.lock")
   system("rm -rf Pods")
   system("rm -rf .symlinks")
   system("rm -rf Flutter/ephemeral")
+  
+  # إجبار السيرفر على تحديث روابط الفلاتر المتوافقة مع الماك سحابياً
+  system("flutter pub get")
 end
 # ------------------------------------------------------------------------
 
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
   unless File.exist?(generated_xcode_build_settings_path)
+    # إذا لم يجد الملف سيبحث السيرفر عن مسار الفلاتر الافتراضي في الماك السحابي
+    return ENV['FLUTTER_ROOT'] if ENV['FLUTTER_ROOT']
     raise "Generated.xcconfig not found. Please run `flutter pub get`."
   end
 
@@ -21,7 +26,7 @@ def flutter_root
     matches = line.match(/FLUTTER_ROOT=(.*)/)
     return matches[1].strip if matches
   end
-  raise "FLUTTER_ROOT not found in Generated.xcconfig."
+  ENV['FLUTTER_ROOT'] ? ENV['FLUTTER_ROOT'] : (raise "FLUTTER_ROOT not found.")
 end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'), flutter_root)

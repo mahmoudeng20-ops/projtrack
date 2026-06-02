@@ -19,9 +19,9 @@ Flutter/App.framework
 Flutter/Flutter.framework
 Flutter/Flutter.podspec
 
-# تم السماح برفع هذين الملفين لإصلاح خطأ Xcode رقم 74 وتوفير إعدادات التوقيع للسيرفر
-# Flutter/Generated.xcconfig
-# Flutter/flutter_export_environment.sh
+# إعادة حظر ملفات الإعدادات المحلية لمنع تعارض بيئة الويندوز مع سيرفر الماك (حل خطأ 74)
+Flutter/Generated.xcconfig
+Flutter/flutter_export_environment.sh
 
 Flutter/ephemeral/
 Flutter/app.flx
