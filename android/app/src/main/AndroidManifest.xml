@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permissions.ACCESS_NETWORK_STATE" />
 
     <application
-        android:label="Projtrack"
+        android:label="Project Track"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:roundIcon="@mipmap/launcher_icon" android:usesCleartextTraffic="true">

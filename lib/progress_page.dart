@@ -3,10 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:upgrader/upgrader.dart'; // تفعيل حزمة الـ upgrader الجديدة هنا بدلاً من القديمة
+import 'package:upgrader/upgrader.dart';
 import 'progress_service.dart';
 import 'info_card.dart';
-import 'calender.dart';
+import 'calender.dart'; // Make sure the class inside this file is named CustomCalendar
 import 'settings_page.dart';
 
 class ProgressPage extends StatefulWidget {
@@ -29,12 +29,27 @@ class _ProgressPageState extends State<ProgressPage> {
   List<Map<String, dynamic>> rawData0001 = [];
 
   String currentProjectCollection = '';
-  String budgetCostValue = ''; // متغير لحفظ قيمة ميزانية المشروع المحدّد وعرضها
+  String budgetCostValue = '';
+  String projectSummaryValue = ''; // The new variable for project summary
+
+  Map<String, String> projectData = {
+    "plannedPercent": "0",
+    "actualPercent": "0",
+    "elapsedPercent": "0",
+    "startDate": "🚨",
+    "endDate": "🚨",
+  };
 
   @override
   void initState() {
     super.initState();
     loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    dailyActualController.dispose();
+    super.dispose();
   }
 
   Future<void> loadInitialData() async {
@@ -62,12 +77,15 @@ class _ProgressPageState extends State<ProgressPage> {
   Future<void> savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     if (selectedArea != null) await prefs.setString('last_area', selectedArea!);
-    if (selectedProject != null)
+    if (selectedProject != null) {
       await prefs.setString('last_project', selectedProject!);
-    if (selectedContractor != null)
+    }
+    if (selectedContractor != null) {
       await prefs.setString('last_contractor', selectedContractor!);
-    if (selectedDate != null)
+    }
+    if (selectedDate != null) {
       await prefs.setString('last_date', selectedDate!.toIso8601String());
+    }
   }
 
   Future<void> extractAreasAndLoadPreferences() async {
@@ -172,6 +190,9 @@ class _ProgressPageState extends State<ProgressPage> {
       setState(() {
         if (contractors.contains(targetContractor)) {
           selectedContractor = targetContractor;
+        } else {
+          selectedContractor =
+              contractors.isNotEmpty ? contractors.first : null;
         }
       });
       savePreferences();
@@ -193,20 +214,14 @@ class _ProgressPageState extends State<ProgressPage> {
       setState(() {
         if (projects.contains(targetProject)) {
           selectedProject = targetProject;
+        } else {
+          selectedProject = projects.isNotEmpty ? projects.first : null;
         }
       });
       loadProjectData();
       savePreferences();
     }
   }
-
-  Map<String, String> projectData = {
-    "plannedPercent": "0",
-    "actualPercent": "0",
-    "elapsedPercent": "0",
-    "startDate": "🚨",
-    "endDate": "🚨",
-  };
 
   Future<void> loadProjectData() async {
     if (selectedProject != null && selectedArea != null) {
@@ -220,6 +235,7 @@ class _ProgressPageState extends State<ProgressPage> {
       );
 
       setState(() {
+        // Fetch and extract Budget cost value
         if (matchingDoc.isNotEmpty && matchingDoc['Budget cost'] != null) {
           String rawCost = matchingDoc['Budget cost'].toString().trim();
           String cleanCost = rawCost.replaceAll(',', '');
@@ -233,6 +249,14 @@ class _ProgressPageState extends State<ProgressPage> {
           }
         } else {
           budgetCostValue = '';
+        }
+
+        // Fetch and extract Project Summary value
+        if (matchingDoc.isNotEmpty && matchingDoc['Project Summary'] != null) {
+          projectSummaryValue =
+              matchingDoc['Project Summary'].toString().trim();
+        } else {
+          projectSummaryValue = '';
         }
       });
 
@@ -269,9 +293,10 @@ class _ProgressPageState extends State<ProgressPage> {
     if (selectedProject == null || selectedDate == null || inputText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(isArabic
-                ? "⚠️ يرجى اختيار المشروع والتاريخ وإدخال النسبة"
-                : "⚠️ Please select project, date and enter the percentage")),
+          content: Text(isArabic
+              ? "⚠️ يرجى اختيار المشروع والتاريخ، وإدخال النسبة المئوية"
+              : "⚠️ Please select a project and date, and enter the percentage"),
+        ),
       );
       return;
     }
@@ -295,8 +320,8 @@ class _ProgressPageState extends State<ProgressPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(isArabic
-              ? "مصرح لمهندس المشروع الأستشاري فقط بتسجيل النسبه الفعليه"
-              : "Authorized for the project consultant engineer only to enter the actual percentage"),
+              ? "المهندس الاستشاري المعتمد للمشروع فقط هو من يمكنه تسجيل النسبة الفعلية"
+              : "Only the Authorized Project Consultant Engineer can enter the actual progress percentage"),
           backgroundColor: Colors.red,
         ),
       );
@@ -315,10 +340,13 @@ class _ProgressPageState extends State<ProgressPage> {
       String? projectPO = matchingDoc['po']?.toString().trim();
 
       if (projectPO == null || projectPO == '0001') {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text(isArabic
-                ? "❌ خطأ: الـ PO غير صحيح أو مفقود"
-                : "❌ Error: Invalid or missing PO")));
+                ? "❌ خطأ: رقم أمر الشراء غير صحيح أو مفقود"
+                : "❌ Error: The PO is invalid or missing"),
+          ),
+        );
         return;
       }
 
@@ -339,9 +367,10 @@ class _ProgressPageState extends State<ProgressPage> {
       if (targetCollection.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(isArabic
-                  ? "❌ لم يتم العثور على مستند الـ PO ($projectPO)"
-                  : "❌ PO document not found ($projectPO)")),
+            content: Text(isArabic
+                ? "❌ لم يتم العثور على مستند أمر الشراء ($projectPO)"
+                : "❌ The PO ($projectPO) document was not found"),
+          ),
         );
         return;
       }
@@ -373,9 +402,10 @@ class _ProgressPageState extends State<ProgressPage> {
       if (actualDocId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(isArabic
-                  ? "❌ لم يتم العثور على سجل لهذا التاريخ"
-                  : "❌ No record found for this date")),
+            content: Text(isArabic
+                ? "❌ لم يتم العثور على سجل لهذا التاريخ"
+                : "❌ No record found for this date"),
+          ),
         );
         return;
       }
@@ -385,15 +415,19 @@ class _ProgressPageState extends State<ProgressPage> {
         'contractor_name': selectedContractor,
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: Text(isArabic
-              ? "✅ تم تحديث النسبة بنجاح"
-              : "✅ Percentage updated successfully")));
+              ? "✅ تم تحديث النسبة المئوية بنجاح"
+              : "✅ Percentage successfully updated"),
+        ),
+      );
       dailyActualController.clear();
       await loadProjectData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isArabic ? "❌ خطأ: $e" : "❌ Error: $e")));
+        SnackBar(content: Text(isArabic ? "❌ خطأ: $e" : "❌ Error: $e")),
+      );
     }
   }
 
@@ -411,6 +445,11 @@ class _ProgressPageState extends State<ProgressPage> {
     String elapsedValue = elapsed.contains('%') ? elapsed : "$elapsed%";
 
     String varianceValue;
+    String statusValue = isArabic ? "غير محدد" : "N/A";
+
+    Color statusCardColor =
+        isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300;
+
     String cleanPlanned = planned.replaceAll('%', '').trim();
     String cleanActual = actual.replaceAll('%', '').trim();
 
@@ -422,37 +461,56 @@ class _ProgressPageState extends State<ProgressPage> {
         cleanActual.isEmpty ||
         cleanActual == "0") {
       varianceValue = isArabic
-          ? "يجب إضافة النسبة الفعلية"
-          : "Actual percentage must be added";
+          ? "يجب إضافة النسبة الفعالية"
+          : "Actual percentage should be added";
     } else {
       double pNum = plannedNum ?? 0.0;
       double variance = pNum - actualNum;
 
       varianceValue =
           "${variance.toStringAsFixed(2).replaceAll(RegExp(r'\.00$'), '')}%";
+
+      if (variance < 0) {
+        statusValue = isArabic ? "متقدم" : "Ahead";
+        statusCardColor =
+            isDarkMode ? Colors.green.shade900 : Colors.green.shade100;
+      } else if (variance >= 0 && variance <= 10) {
+        statusValue = isArabic ? "منتظم" : "On Track";
+        statusCardColor =
+            isDarkMode ? Colors.green.shade900 : Colors.green.shade100;
+      } else if (variance > 10 && variance <= 25) {
+        statusValue = isArabic ? "متأخر" : "Delayed";
+        statusCardColor =
+            isDarkMode ? Colors.amber.shade900 : Colors.amber.shade100;
+      } else if (variance > 25) {
+        statusValue = isArabic ? "متعثر" : "Troubled";
+        statusCardColor =
+            isDarkMode ? Colors.red.shade900 : Colors.red.shade100;
+      }
     }
 
-    String startVal = projectData["startDate"] == "غير محدد" ||
-            projectData["startDate"] == "لا توجد بيانات"
-        ? (isArabic ? projectData["startDate"]! : "No Data")
+    String startVal = projectData["startDate"] == "Undetermined" ||
+            projectData["startDate"] == "No Data"
+        ? (isArabic ? "لا توجد بيانات" : "No Data")
         : projectData["startDate"]!;
 
-    String endVal = projectData["endDate"] == "غير محدد" ||
-            projectData["endDate"] == "لا توجد بيانات"
-        ? (isArabic ? projectData["endDate"]! : "No Data")
+    String endVal = projectData["endDate"] == "Undetermined" ||
+            projectData["endDate"] == "No Data"
+        ? (isArabic ? "لا توجد بيانات" : "No Data")
         : projectData["endDate"]!;
 
     String displayBudgetCost = budgetCostValue.isNotEmpty
         ? budgetCostValue
         : (isArabic ? "لا توجد بيانات" : "No Data");
 
-    // تحديث وتعديل الـ UpgradeAlert ليتوافق مع الإصدار الحديث للحزمة بدون أخطاء
+    String displayProjectSummary = projectSummaryValue.isNotEmpty
+        ? projectSummaryValue
+        : (isArabic
+            ? "لا يوجد وصف لنطاق المشروع حالياً"
+            : "No project scope description currently available");
+
     return UpgradeAlert(
       upgrader: Upgrader(
-        storeController: UpgraderStoreController(
-          onAndroid: () => UpgraderPlayStore(),
-          oniOS: () => UpgraderAppStore(),
-        ),
         durationUntilAlertAgain: const Duration(days: 1),
       ),
       child: Scaffold(
@@ -487,14 +545,14 @@ class _ProgressPageState extends State<ProgressPage> {
                     ),
                   )
                 else ...[
-                  Text(isArabic ? "اختر المنطقة:" : "Select Area:",
+                  Text(isArabic ? "اختر المنطقه:" : "Select Area:",
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold)),
                   DropdownButtonFormField<String>(
                     isExpanded: true,
-                    value: selectedArea,
+                    value: areas.contains(selectedArea) ? selectedArea : null,
                     items: areas
-                        .map((area) => DropdownMenuItem(
+                        .map((area) => DropdownMenuItem<String>(
                             value: area,
                             child: Text(area,
                                 style: const TextStyle(fontSize: 12))))
@@ -512,9 +570,12 @@ class _ProgressPageState extends State<ProgressPage> {
                           fontSize: 16, fontWeight: FontWeight.bold)),
                   DropdownButtonFormField<String>(
                     isExpanded: true,
-                    value: selectedProject,
+                    value: (selectedProject != null &&
+                            projects.contains(selectedProject))
+                        ? selectedProject
+                        : null,
                     items: projects
-                        .map((proj) => DropdownMenuItem(
+                        .map((proj) => DropdownMenuItem<String>(
                             value: proj,
                             child: Text(proj,
                                 style: const TextStyle(fontSize: 12))))
@@ -533,9 +594,12 @@ class _ProgressPageState extends State<ProgressPage> {
                           fontSize: 16, fontWeight: FontWeight.bold)),
                   DropdownButtonFormField<String>(
                     isExpanded: true,
-                    value: selectedContractor,
+                    value: (selectedContractor != null &&
+                            contractors.contains(selectedContractor))
+                        ? selectedContractor
+                        : null,
                     items: contractors
-                        .map((c) => DropdownMenuItem(
+                        .map((c) => DropdownMenuItem<String>(
                             value: c,
                             child:
                                 Text(c, style: const TextStyle(fontSize: 12))))
@@ -591,8 +655,46 @@ class _ProgressPageState extends State<ProgressPage> {
                       title: isArabic ? "النسبة الفعلية" : "Actual Percentage",
                       value: actualValue),
                   InfoCard(
-                      title: isArabic ? "التباين (Variance)" : "Variance",
+                      title: isArabic ? "الانحراف" : "Variance",
                       value: varianceValue),
+                  Card(
+                    elevation: 1,
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(
+                        color: isDarkMode ? Colors.white24 : Colors.black12,
+                        width: 1,
+                      ),
+                    ),
+                    color: statusCardColor,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isArabic ? "حالة المشروع" : "Project Status",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            statusValue,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   InfoCard(
                       title: isArabic ? "المدة المنقضية" : "Elapsed Duration",
                       value: elapsedValue),
@@ -603,8 +705,47 @@ class _ProgressPageState extends State<ProgressPage> {
                       title: isArabic ? "تاريخ البداية" : "Start Date",
                       value: startVal),
                   InfoCard(
-                      title: isArabic ? "تاريخ النهاية" : "End Date",
+                      title: isArabic ? "تاريخ النهاية" : "Finish Date",
                       value: endVal),
+
+                  // Adding the Project Summary (Scope) card
+                  const SizedBox(height: 15),
+                  Text(
+                    isArabic ? "نطاق المشروع:" : "Project Scope:",
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 5),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDarkMode ? Colors.white24 : Colors.black12,
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      displayProjectSummary,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: isDarkMode
+                            ? Colors.white.withOpacity(0.87)
+                            : Colors.black87,
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 30),
                   Container(
                     padding: const EdgeInsets.all(16),
