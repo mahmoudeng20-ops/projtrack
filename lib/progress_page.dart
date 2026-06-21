@@ -3,11 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:upgrader/upgrader.dart';
 import 'progress_service.dart';
 import 'info_card.dart';
-import 'calender.dart'; // Make sure the class inside this file is named CustomCalendar
+import 'calender.dart';
 import 'settings_page.dart';
+import 'project_table_page.dart';
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key});
@@ -30,7 +30,7 @@ class _ProgressPageState extends State<ProgressPage> {
 
   String currentProjectCollection = '';
   String budgetCostValue = '';
-  String projectSummaryValue = ''; // The new variable for project summary
+  String projectSummaryValue = '';
 
   Map<String, String> projectData = {
     "plannedPercent": "0",
@@ -235,7 +235,6 @@ class _ProgressPageState extends State<ProgressPage> {
       );
 
       setState(() {
-        // Fetch and extract Budget cost value
         if (matchingDoc.isNotEmpty && matchingDoc['Budget cost'] != null) {
           String rawCost = matchingDoc['Budget cost'].toString().trim();
           String cleanCost = rawCost.replaceAll(',', '');
@@ -251,7 +250,6 @@ class _ProgressPageState extends State<ProgressPage> {
           budgetCostValue = '';
         }
 
-        // Fetch and extract Project Summary value
         if (matchingDoc.isNotEmpty && matchingDoc['Project Summary'] != null) {
           projectSummaryValue =
               matchingDoc['Project Summary'].toString().trim();
@@ -509,298 +507,296 @@ class _ProgressPageState extends State<ProgressPage> {
             ? "لا يوجد وصف لنطاق المشروع حالياً"
             : "No project scope description currently available");
 
-    return UpgradeAlert(
-      upgrader: Upgrader(
-        durationUntilAlertAgain: const Duration(days: 1),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+            isArabic ? "نسب الإنجاز اليومية" : "Daily Progress Percentages"),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.table_chart),
+            tooltip: isArabic ? 'جدول المشاريع' : 'Project Table',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const ProjectTablePage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: isArabic ? 'إعدادات التطبيق' : 'App Settings',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+            },
+          ),
+        ],
       ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-              isArabic ? "نسب الإنجاز اليومية" : "Daily Progress Percentages"),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              tooltip: isArabic ? 'إعدادات التطبيق' : 'App Settings',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
-              },
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (areas.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                else ...[
-                  Text(isArabic ? "اختر المنطقه:" : "Select Area:",
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    value: areas.contains(selectedArea) ? selectedArea : null,
-                    items: areas
-                        .map((area) => DropdownMenuItem<String>(
-                            value: area,
-                            child: Text(area,
-                                style: const TextStyle(fontSize: 12))))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => selectedArea = value);
-                        filterDataByArea(value);
-                      }
-                    },
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (areas.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(),
                   ),
-                  const SizedBox(height: 15),
-                  Text(isArabic ? "اختر المشروع:" : "Select Project:",
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    value: (selectedProject != null &&
-                            projects.contains(selectedProject))
-                        ? selectedProject
-                        : null,
-                    items: projects
-                        .map((proj) => DropdownMenuItem<String>(
-                            value: proj,
-                            child: Text(proj,
-                                style: const TextStyle(fontSize: 12))))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => selectedProject = value);
-                        updateContractorFromProject(value);
-                        loadProjectData();
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 15),
-                  Text(isArabic ? "اختر المقاول:" : "Select Contractor:",
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    value: (selectedContractor != null &&
-                            contractors.contains(selectedContractor))
-                        ? selectedContractor
-                        : null,
-                    items: contractors
-                        .map((c) => DropdownMenuItem<String>(
-                            value: c,
-                            child:
-                                Text(c, style: const TextStyle(fontSize: 12))))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => selectedContractor = value);
-                        updateProjectFromContractor(value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 15),
-                  Text(isArabic ? "تاريخ البيانات:" : "Data Date:",
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 5),
-                  InkWell(
-                    onTap: () async {
-                      final pickedDate = await Navigator.push<DateTime?>(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const CustomCalendar()),
-                      );
-                      if (pickedDate != null) {
-                        setState(() => selectedDate = pickedDate);
-                        await loadProjectData();
-                        savePreferences();
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(selectedDate == null
-                              ? (isArabic
-                                  ? "اضغط لاختيار التاريخ"
-                                  : "Tap to select date")
-                              : DateFormat('yyyy-MM-dd').format(selectedDate!)),
-                          const Icon(Icons.calendar_month),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  InfoCard(
-                      title: isArabic ? "النسبة المخططة" : "Planned Percentage",
-                      value: plannedValue),
-                  InfoCard(
-                      title: isArabic ? "النسبة الفعلية" : "Actual Percentage",
-                      value: actualValue),
-                  InfoCard(
-                      title: isArabic ? "الانحراف" : "Variance",
-                      value: varianceValue),
-                  Card(
-                    elevation: 1,
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(
-                        color: isDarkMode ? Colors.white24 : Colors.black12,
-                        width: 1,
-                      ),
-                    ),
-                    color: statusCardColor,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            isArabic ? "حالة المشروع" : "Project Status",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  isDarkMode ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            statusValue,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: isDarkMode ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  InfoCard(
-                      title: isArabic ? "المدة المنقضية" : "Elapsed Duration",
-                      value: elapsedValue),
-                  InfoCard(
-                      title: isArabic ? "قيمة المشروع" : "Budget Cost",
-                      value: displayBudgetCost),
-                  InfoCard(
-                      title: isArabic ? "تاريخ البداية" : "Start Date",
-                      value: startVal),
-                  InfoCard(
-                      title: isArabic ? "تاريخ النهاية" : "Finish Date",
-                      value: endVal),
-
-                  // Adding the Project Summary (Scope) card
-                  const SizedBox(height: 15),
-                  Text(
-                    isArabic ? "نطاق المشروع:" : "Project Scope:",
+                )
+              else ...[
+                Text(isArabic ? "اختر المنطقه:" : "Select Area:",
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  value: areas.contains(selectedArea) ? selectedArea : null,
+                  items: areas
+                      .map((area) => DropdownMenuItem<String>(
+                          value: area,
+                          child:
+                              Text(area, style: const TextStyle(fontSize: 12))))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => selectedArea = value);
+                      filterDataByArea(value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 15),
+                Text(isArabic ? "اختر المشروع:" : "Select Project:",
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  value: (selectedProject != null &&
+                          projects.contains(selectedProject))
+                      ? selectedProject
+                      : null,
+                  items: projects
+                      .map((proj) => DropdownMenuItem<String>(
+                          value: proj,
+                          child:
+                              Text(proj, style: const TextStyle(fontSize: 12))))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => selectedProject = value);
+                      updateContractorFromProject(value);
+                      loadProjectData();
+                    }
+                  },
+                ),
+                const SizedBox(height: 15),
+                Text(isArabic ? "اختر المقاول:" : "Select Contractor:",
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  value: (selectedContractor != null &&
+                          contractors.contains(selectedContractor))
+                      ? selectedContractor
+                      : null,
+                  items: contractors
+                      .map((c) => DropdownMenuItem<String>(
+                          value: c,
+                          child: Text(c, style: const TextStyle(fontSize: 12))))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => selectedContractor = value);
+                      updateProjectFromContractor(value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 15),
+                Text(isArabic ? "تاريخ البيانات:" : "Data Date:",
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                InkWell(
+                  onTap: () async {
+                    final pickedDate = await Navigator.push<DateTime?>(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CustomCalendar()),
+                    );
+                    if (pickedDate != null) {
+                      setState(() => selectedDate = pickedDate);
+                      await loadProjectData();
+                      savePreferences();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isDarkMode ? Colors.white24 : Colors.black12,
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(8)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(selectedDate == null
+                            ? (isArabic
+                                ? "اضغط لاختيار التاريخ"
+                                : "Tap to select date")
+                            : DateFormat('yyyy-MM-dd').format(selectedDate!)),
+                        const Icon(Icons.calendar_month),
                       ],
                     ),
-                    child: Text(
-                      displayProjectSummary,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.5,
-                        color: isDarkMode
-                            ? Colors.white.withOpacity(0.87)
-                            : Colors.black87,
-                      ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                InfoCard(
+                    title: isArabic ? "النسبة المخططة" : "Planned Percentage",
+                    value: plannedValue),
+                InfoCard(
+                    title: isArabic ? "النسبة الفعلية" : "Actual Percentage",
+                    value: actualValue),
+                InfoCard(
+                    title: isArabic ? "الانحراف" : "Variance",
+                    value: varianceValue),
+                Card(
+                  elevation: 1,
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: isDarkMode ? Colors.white24 : Colors.black12,
+                      width: 1,
                     ),
                   ),
-
-                  const SizedBox(height: 30),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDarkMode
-                          ? Colors.grey.shade900
-                          : Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: isDarkMode
-                              ? Colors.grey.shade800
-                              : Colors.blue.shade200),
-                    ),
-                    child: Column(
+                  color: statusCardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          isArabic
-                              ? "إضافة النسبة الفعلية اليومية:"
-                              : "Add Daily Actual Percentage:",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          isArabic ? "حالة المشروع" : "Project Status",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white70 : Colors.black87,
+                          ),
                         ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: dailyActualController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                decoration: InputDecoration(
-                                  hintText:
-                                      isArabic ? "مثال: 40%" : "e.g., 40%",
-                                  border: const OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton(
-                              onPressed: addDailyActualToFirestore,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                shape: const CircleBorder(),
-                                padding: const EdgeInsets.all(15),
-                              ),
-                              child: const Icon(Icons.add, color: Colors.white),
-                            ),
-                          ],
+                        Text(
+                          statusValue,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ],
+                ),
+                InfoCard(
+                    title: isArabic ? "المدة المنقضية" : "Elapsed Duration",
+                    value: elapsedValue),
+                InfoCard(
+                    title: isArabic ? "قيمة المشروع" : "Budget Cost",
+                    value: displayBudgetCost),
+                InfoCard(
+                    title: isArabic ? "تاريخ البداية" : "Start Date",
+                    value: startVal),
+                InfoCard(
+                    title: isArabic ? "تاريخ النهاية" : "Finish Date",
+                    value: endVal),
+                const SizedBox(height: 15),
+                Text(
+                  isArabic ? "نطاق المشروع:" : "Project Scope:",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 5),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.white24 : Colors.black12,
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    displayProjectSummary,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.87)
+                          : Colors.black87,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color:
+                        isDarkMode ? Colors.grey.shade900 : Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: isDarkMode
+                            ? Colors.grey.shade800
+                            : Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        isArabic
+                            ? "إضافة النسبة الفعلية اليومية:"
+                            : "Add Daily Actual Percentage:",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: dailyActualController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              decoration: InputDecoration(
+                                hintText: isArabic ? "مثال: 40%" : "e.g., 40%",
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: addDailyActualToFirestore,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              shape: const CircleBorder(),
+                              padding: const EdgeInsets.all(15),
+                            ),
+                            child: const Icon(Icons.add, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
