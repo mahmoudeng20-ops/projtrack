@@ -42,6 +42,104 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  // دالة حذف الحساب مع تأكيد
+  Future<void> _deleteAccount() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    String currentLangCode = appState.locale.languageCode;
+    bool isArabic = currentLangCode == 'ar';
+
+    bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isArabic ? "تأكيد حذف الحساب" : "Confirm Delete Account"),
+        content: Text(isArabic
+            ? "هل أنت متأكد؟ سيتم حذف حسابك نهائياً ولا يمكن التراجع."
+            : "Are you sure? Your account will be permanently deleted."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(isArabic ? "إلغاء" : "Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(isArabic ? "نعم، احذف" : "Yes, delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await user.delete();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/');
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        // طلب إعادة تسجيل الدخول
+        String? password = await _showReauthDialog();
+        if (password == null) return;
+
+        AuthCredential credential = EmailAuthProvider.credential(
+          email: user.email!,
+          password: password,
+        );
+        await user.reauthenticateWithCredential(credential);
+        await user.delete();
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/');
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("❌ فشل الحذف: ${e.message}")),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ خطأ غير متوقع: $e")),
+        );
+      }
+    }
+  }
+
+  // نافذة إعادة تسجيل الدخول بكلمة المرور
+  Future<String?> _showReauthDialog() {
+    String langCode = appState.locale.languageCode;
+    bool isArabic = langCode == 'ar';
+    TextEditingController passwordController = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isArabic ? "إعادة تسجيل الدخول" : "Re-authentication"),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: isArabic ? "كلمة المرور" : "Password",
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(isArabic ? "إلغاء" : "Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, passwordController.text),
+            child: Text(isArabic ? "تأكيد" : "Confirm"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // دالة مساعدة لتنسيق نصوص الإيميل
   String? encodeQueryParameters(Map<String, String> params) {
     return params.entries
@@ -185,7 +283,26 @@ class _SettingsPageState extends State<SettingsPage> {
               onTap: _sendFeedbackEmail,
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
+
+          // 🗑️ زر حذف الحساب
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: ElevatedButton.icon(
+              onPressed: _deleteAccount,
+              icon: const Icon(Icons.delete_forever, color: Colors.white),
+              label: Text(
+                isArabic ? "حذف الحساب" : "Delete Account",
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade900,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // 🚪 زر تسجيل الخروج
           Padding(
