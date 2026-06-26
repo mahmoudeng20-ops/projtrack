@@ -27,6 +27,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
 
   String? _selectedArea;
   String? _selectedStatus;
+  String? _selectedAction;
 
   final Map<String, Map<String, dynamic>> _projectsCalculatedData = {};
   final Set<String> _fetchingPOs = {};
@@ -36,6 +37,9 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
 
   pw.Font? _arabicFont;
   bool _fontLoaded = false;
+
+  final GlobalKey _shareButtonKey = GlobalKey();
+  Rect? _sharePositionOrigin;
 
   @override
   void initState() {
@@ -134,6 +138,17 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
       }).toList();
     }
 
+    if (_selectedAction != null) {
+      results = results.where((item) {
+        String currentPO = item['po']?.toString().trim() ?? "";
+        String? cachedAction =
+            _projectsCalculatedData[currentPO]?["requiredAction"];
+        if (cachedAction == null) return true;
+        return cachedAction.trim().toLowerCase() ==
+            _selectedAction!.trim().toLowerCase();
+      }).toList();
+    }
+
     _filteredTableRows = results;
   }
 
@@ -223,6 +238,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                   }
                 }
 
+                String requiredAction = _getRequiredAction(varianceValue, isArabic);
                 _projectsCalculatedData[projectPO] = {
                   "planned": planned.contains('%') ? planned : "$planned%",
                   "actual": actual.contains('%') ? actual : "$actual%",
@@ -232,6 +248,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                   "textColor": textColor,
                   "startDate": startVal,
                   "endDate": endVal,
+                  "requiredAction": requiredAction,
                 };
               } else {
                 _projectsCalculatedData[projectPO] = {
@@ -244,6 +261,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                   "textColor": isDarkMode ? Colors.white : Colors.black87,
                   "startDate": isArabic ? "لا توجد بيانات" : "No Data",
                   "endDate": isArabic ? "لا توجد بيانات" : "No Data",
+                  "requiredAction": isArabic ? "لا يوجد" : "None",
                 };
               }
             }).catchError((_) {
@@ -257,6 +275,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                 "textColor": isDarkMode ? Colors.white : Colors.black87,
                 "startDate": isArabic ? "لا توجد بيانات" : "No Data",
                 "endDate": isArabic ? "لا توجد بيانات" : "No Data",
+                "requiredAction": isArabic ? "لا يوجد" : "None",
               };
             }).whenComplete(() {
               _fetchingPOs.remove(projectPO);
@@ -292,6 +311,15 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
       });
       _loadAllProjectsCalculatedData();
     }
+  }
+
+  String _getRequiredAction(String varianceStr, bool isArabic) {
+    String clean = varianceStr.replaceAll('%', '').trim();
+    double? v = double.tryParse(clean);
+    if (v == null || v < 5) return isArabic ? "لا يوجد" : "None";
+    if (v >= 5 && v < 15) return isArabic ? "خطاب حث أول + تقديم خطه تصحيحيه" : "1st Reminder Letter + Recovery Plan";
+    if (v >= 15 && v < 20) return isArabic ? "خطاب حث ثاني + تقديم خطه تصحيحيه" : "2nd Reminder Letter + Recovery Plan";
+    return isArabic ? "خطاب إنذار أول" : "1st Warning Letter";
   }
 
   void _shareMenu() {
@@ -363,7 +391,8 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
               "النسبة المخططة",
               "النسبة الفعلية",
               "الانحراف",
-              "الحالة"
+              "الحالة",
+              "الإجراءات المطلوبة"
             ]
           : [
               "Area",
@@ -375,7 +404,8 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
               "Planned %",
               "Actual %",
               "Variance",
-              "Status"
+              "Status",
+              "Required Action"
             ];
 
       List<List<String>> rows = _filteredTableRows.map<List<String>>((item) {
@@ -392,6 +422,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
           d?["actual"] ?? "-",
           d?["variance"] ?? "-",
           d?["statusText"] ?? (isArabic ? "غير محدد" : "N/A"),
+          d?["requiredAction"] ?? (isArabic ? "لا يوجد" : "None"),
         ];
       }).toList();
 
@@ -400,13 +431,41 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
               ? pw.TextDirection.rtl
               : pw.TextDirection.ltr;
 
+      String dateStr = _selectedDate != null
+          ? "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
+          : (isArabic ? "غير محدد" : "Not selected");
+
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4.landscape,
           margin: const pw.EdgeInsets.all(16),
           build: (ctx) => [
+            pw.Center(
+              child: pw.Text(
+                isArabic ? "تاريخ البيانات: $dateStr" : "Data Date: $dateStr",
+                textDirection: pw.TextDirection.rtl,
+                style: pw.TextStyle(
+                    font: _arabicFont,
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 12),
+              ),
+            ),
+            pw.SizedBox(height: 8),
             pw.Table(
               border: pw.TableBorder.all(),
+              columnWidths: {
+                0: const pw.FlexColumnWidth(1.5),
+                1: const pw.FlexColumnWidth(1.5),
+                2: const pw.FlexColumnWidth(2.5),
+                3: const pw.FlexColumnWidth(1.0),
+                4: const pw.FlexColumnWidth(1.5),
+                5: const pw.FlexColumnWidth(1.5),
+                6: const pw.FlexColumnWidth(1.2),
+                7: const pw.FlexColumnWidth(1.2),
+                8: const pw.FlexColumnWidth(1.2),
+                9: const pw.FlexColumnWidth(1.2),
+                10: const pw.FlexColumnWidth(2.0),
+              },
               children: [
                 pw.TableRow(
                   children: headers
@@ -454,6 +513,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'application/pdf')],
         subject: isArabic ? "بيانات جدول المشاريع" : "Project Table Data",
+        sharePositionOrigin: _sharePositionOrigin,
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -476,6 +536,16 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
       final excel = Excel.createExcel();
       final sheet = excel['Sheet1'];
 
+      String dateStr = _selectedDate != null
+          ? "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
+          : (isArabic ? "غير محدد" : "Not selected");
+
+      sheet.appendRow([
+        TextCellValue(
+            isArabic ? "تاريخ البيانات: $dateStr" : "Data Date: $dateStr"),
+      ]);
+      sheet.appendRow([]);
+
       sheet.appendRow(isArabic
           ? [
               TextCellValue("المنطقة"),
@@ -487,7 +557,8 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
               TextCellValue("النسبة المخططة"),
               TextCellValue("النسبة الفعلية"),
               TextCellValue("الانحراف"),
-              TextCellValue("الحالة")
+              TextCellValue("الحالة"),
+              TextCellValue("الإجراءات المطلوبة")
             ]
           : [
               TextCellValue("Area"),
@@ -499,7 +570,8 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
               TextCellValue("Planned %"),
               TextCellValue("Actual %"),
               TextCellValue("Variance"),
-              TextCellValue("Status")
+              TextCellValue("Status"),
+              TextCellValue("Required Action")
             ]);
 
       for (var item in _filteredTableRows) {
@@ -516,6 +588,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
           TextCellValue(d?["actual"] ?? "-"),
           TextCellValue(d?["variance"] ?? "-"),
           TextCellValue(d?["statusText"] ?? (isArabic ? "غير محدد" : "N/A")),
+          TextCellValue(d?["requiredAction"] ?? (isArabic ? "لا يوجد" : "None")),
         ]);
       }
 
@@ -533,6 +606,7 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         ],
         subject: isArabic ? "بيانات جدول المشاريع" : "Project Table Data",
+        sharePositionOrigin: _sharePositionOrigin,
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -558,9 +632,16 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
         centerTitle: true,
         actions: [
           IconButton(
+            key: _shareButtonKey,
             icon: const Icon(Icons.share),
             tooltip: isArabic ? "مشاركة البيانات" : "Share data",
-            onPressed: _shareMenu,
+            onPressed: () {
+              final RenderBox? box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+              if (box != null && box.hasSize) {
+                _sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+              }
+              _shareMenu();
+            },
           ),
         ],
       ),
@@ -688,6 +769,50 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                           onChanged: (value) {
                             setState(() {
                               _selectedStatus = value;
+                              _applyFiltering();
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        Text(isArabic ? "الإجراءات المطلوبة:" : "Required Action:",
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<String?>(
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                          ),
+                          value: _selectedAction,
+                          items: [
+                            DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text(
+                                    isArabic ? "كل الإجراءات" : "All Actions",
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue))),
+                            ...[
+                              isArabic
+                                  ? "لا يوجد"
+                                  : "None",
+                              isArabic
+                                  ? "خطاب حث أول + تقديم خطه تصحيحيه"
+                                  : "1st Reminder Letter + Recovery Plan",
+                              isArabic ? "خطاب حث ثاني + تقديم خطه تصحيحيه" : "2nd Reminder Letter + Recovery Plan",
+                              isArabic ? "خطاب إنذار أول" : "1st Warning Letter",
+                            ].map((action) => DropdownMenuItem<String?>(
+                                    value: action,
+                                    child: Text(action,
+                                        style: const TextStyle(fontSize: 13)))),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedAction = value;
                               _applyFiltering();
                             });
                           },
@@ -824,6 +949,16 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                                                           FontWeight.bold,
                                                       fontSize: 11,
                                                       color: Colors.black87))),
+                                          DataColumn(
+                                              label: Text(
+                                                  isArabic
+                                                      ? 'الإجراءات المطلوبة'
+                                                      : 'Required Action',
+                                                  style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 11,
+                                                      color: Colors.red))),
                                         ],
                                         rows: _filteredTableRows.map((item) {
                                           String currentPO =
@@ -873,6 +1008,10 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                                               _projectsCalculatedData[currentPO]
                                                       ?["endDate"] ??
                                                   (isRowLoading ? "..." : "-");
+                                          String requiredAction =
+                                              _projectsCalculatedData[currentPO]
+                                                      ?["requiredAction"] ??
+                                                  (isArabic ? "لا يوجد" : "None");
 
                                           return DataRow(cells: [
                                             DataCell(Text(
@@ -944,6 +1083,12 @@ class _ProjectTablePageState extends State<ProjectTablePage> {
                                                             FontWeight.bold,
                                                         fontSize: 11,
                                                         color: textColor)))),
+                                            DataCell(Text(requiredAction,
+                                                style: const TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                    fontSize: 11,
+                                                    color: Colors.red))),
                                           ]);
                                         }).toList(),
                                       ),
